@@ -8,6 +8,7 @@ from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 
 from kernels import ClassicalKernel, QuantumKernel
+from scratch import SVMFromScratch
 from visualization import Visualizer
 
 if __name__ == '__main__':
@@ -56,9 +57,16 @@ if __name__ == '__main__':
 
     clas_model = svm.SVC(kernel=clas_kernel.kernel, random_state=0)
     qml_model = svm.SVC(kernel=q_kernel.kernel, random_state=0)
+    scratch_model = SVMFromScratch(kernel="rbf")
+    
+    models = {
+        "classical": clas_model,
+        # "qml": qml_model,
+        "scratch": scratch_model,
+    }
 
-    fig, axes = plt.subplots(2, 1, tight_layout=True, figsize=(14, 10), sharex="all", sharey="all")
-    for i, (m_name, model) in enumerate(zip(["classical", "qml"], [clas_model, qml_model])):
+    fig, axes = plt.subplots(len(models), 1, tight_layout=True, figsize=(14, 10), sharex="all", sharey="all")
+    for i, (m_name, model) in enumerate(models.items()):
         fit_start_time = time.time()
         model.fit(X, y)
         fit_end_time = time.time()
