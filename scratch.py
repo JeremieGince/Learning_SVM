@@ -30,6 +30,7 @@ class SVMFromScratch(BaseEstimator):
         self.multipliers = None
         self.support_indexes = None
         self.bias = None
+        self._training_kernel = None
 
     @property
     def dual_coef_(self):
@@ -52,22 +53,23 @@ class SVMFromScratch(BaseEstimator):
             return pairwise_kernels(x0, x1, metric=self._kernel)
         else:
             return self._kernel(x0, x1)
+        
+    def _get_support_kernel(self, x):
+        x = np.asarray(x)
+        is_training_set = (self.X_.shape == x.shape) and np.allclose(self.X_, x)
+        if is_training_set:
+            if self._training_kernel is None:
+                self._training_kernel = self.apply_kernel(self.X_, self.X_)
+            _support_kernel = self._training_kernel[self.support_indexes, :]
+        else:
+            _support_kernel = self.apply_kernel(self.support_vectors_, x)
+        return _support_kernel  # (n_supports, n_samples)
     
     def compute_h(self, x):
-        # supports = self.X_[self.support_indexes]
-        # kernel = self.apply_kernel(supports, x)
-        # alphas = self.multipliers[self.support_indexes]
-        # ys = self.y_[self.support_indexes]
-        # alpha_y = alphas * ys
-        # h = np.dot(alpha_y, kernel) + self.bias
-
-        # h = self.bias * np.ones(x.shape[0])
-        # for dc, sv in zip(self.dual_coef_, self.support_vectors_):
-        #     h += dc * self.apply_kernel(sv.reshape(1, -1), x)
-
+        x = np.asarray(x)
         h = np.dot(
             self.dual_coef_.reshape(1, -1),  # (1, n_supports)
-            self.apply_kernel(self.support_vectors_, x)  # (n_supports, n_samples)
+            self._get_support_kernel(x)  # (n_supports, n_samples)
         ) + self.bias  # (1, n_supports) @ (n_supports, n_samples) + (1, n_samples) -> (1, n_samples)
         h = h.reshape(-1)  # (n_samples, )
         return h
@@ -79,7 +81,7 @@ class SVMFromScratch(BaseEstimator):
     
     def compute_derivative_hinge_by_multipliers(self, x):
         condition = ((1 - self.y_ * self.compute_h(x)) > 0.0).astype(int)  # (n_samples, )
-        kernel = self.apply_kernel(self.support_vectors_, x)
+        kernel = self._get_support_kernel(x)  # (n_supports, n_samples)
         ys = self.y_[self.support_indexes]
         d_loss = np.dot(-self.y_.reshape(1, -1), np.dot(ys, kernel)).reshape(-1)  # (n_samples, )
         d_reg = self._lmbda * self.multipliers  # (n_samples, )
@@ -108,6 +110,8 @@ class SVMFromScratch(BaseEstimator):
         self.multipliers = np.ones(X.shape[0])
         self.support_indexes = np.arange(X.shape[0])
         self.bias = 0.0
+        
+        self._training_kernel = self.apply_kernel(self.X_, self.X_)
 
         iteration = 0
         self.history = []
@@ -118,9 +122,9 @@ class SVMFromScratch(BaseEstimator):
             self.multipliers -= self._eta * d_hl_d_m
             self.multipliers[self.multipliers < 0.0] = 0.0
             # self.multipliers[self.multipliers > self._C] = 0.0
-            n_supports = max(1, int(0.5 * self.multipliers.shape[0]))
+            # n_supports = max(1, int(0.5 * self.multipliers.shape[0]))
             # put the top n_supports multipliers to 0
-            self.multipliers[np.argsort(self.multipliers)[:-n_supports]] = 0.0
+            # self.multipliers[np.argsort(self.multipliers)[:-n_supports]] = 0.0
 
             self.support_indexes = np.argwhere(self.multipliers > 0.0).reshape(-1)
             self.bias -= self._eta * d_hl_d_b
@@ -156,6 +160,11 @@ class SVMFromScratch(BaseEstimator):
         w = np.dot(self.dual_coef_, self.support_vectors_)
         b = self.bias
         return w, b
+    
+    def decision_function(self, x):
+        check_is_fitted(self)
+        x = check_array(x)
+        return self.compute_h(x)
 
     def visualize(self, x, y, **kwargs):
         import matplotlib.pyplot as plt
