@@ -46,7 +46,8 @@ class ClassicalKernel(BaseEstimator):
     def transform(self, x):
         check_is_fitted(self)
         x = check_array(x)
-        return np.dot(x, self._encoder_matrix)
+        result = np.dot(x, self._encoder_matrix)
+        return result
 
     def inverse_transform(self, x):
         check_is_fitted(self)
