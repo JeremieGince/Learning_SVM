@@ -12,7 +12,7 @@ from scratch import SVMFromScratch
 from visualization import Visualizer
 
 if __name__ == '__main__':
-    n_qubits = 2
+    embedding_size = 2
     # dataset = datasets.load_breast_cancer(as_frame=True)
     # dataset = datasets.load_iris(as_frame=True)
     dataset = datasets.make_classification(
@@ -42,31 +42,36 @@ if __name__ == '__main__':
     print(f"{np.unique(y) = }")
 
     rn_state = np.random.RandomState(seed=0)
-    rn_embed_matrix = rn_state.randn(X.shape[-1], n_qubits)
+    rn_embed_matrix = rn_state.randn(X.shape[-1], embedding_size)
 
     clas_kernel = ClassicalKernel(
-        embedding_dim=n_qubits,
+        embedding_dim=embedding_size,
         metric="rbf",
-        encoder_matrix=rn_embed_matrix,
+        # encoder_matrix=rn_embed_matrix,
         seed=0
     ).fit(X, y)
     q_kernel = QuantumKernel(
-        embedding_dim=n_qubits,
+        embedding_dim=embedding_size,
         seed=0,
-        encoder_matrix=rn_embed_matrix,
+        # encoder_matrix=rn_embed_matrix,
+        shots=32,
     ).fit(X, y)
 
     clas_model = svm.SVC(kernel=clas_kernel.kernel, random_state=0)
     qml_model = svm.SVC(kernel=q_kernel.kernel, random_state=0)
-    scratch_model = SVMFromScratch(kernel="rbf", max_iter=1_000)
+    scratch_model = SVMFromScratch(kernel=clas_kernel.kernel, max_iter=1_000)
+    q_scratch_model = SVMFromScratch(kernel=q_kernel.kernel, max_iter=1_000)
     
     models = {
-        # "classical": clas_model,
-        # "qml": qml_model,
-        "scratch": scratch_model,
+        "classical": clas_model,
+        "scratch"  : scratch_model,
+        "qml": qml_model,
+        "q_scratch": q_scratch_model,
     }
-
-    fig, axes = plt.subplots(len(models), 1, tight_layout=True, figsize=(14, 10), sharex="all", sharey="all")
+    n_plots = len(models)
+    n_rows = int(np.ceil(np.sqrt(n_plots)))
+    n_cols = int(np.ceil(n_plots / n_rows))
+    fig, axes = plt.subplots(n_rows, n_cols, tight_layout=True, figsize=(14, 10), sharex="all", sharey="all")
     axes = np.ravel(np.asarray([axes]))
     for i, (m_name, model) in enumerate(models.items()):
         fit_start_time = time.time()
@@ -82,7 +87,7 @@ if __name__ == '__main__':
             # reducer=decomposition.PCA(n_components=2, random_state=0),
             # reducer=umap.UMAP(n_components=2, transform_seed=0, n_jobs=max(0, psutil.cpu_count() - 2)),
             check_estimators=False,
-            n_pts=1_000,
+            n_pts=10_000,
             title=f"Decision boundaries in the reduced space.",
             legend_labels=getattr(dataset, "target_names", None),
             # axis_name="RN",
@@ -93,3 +98,5 @@ if __name__ == '__main__':
     plt.show()
 
     models["scratch"].visualize(X, y)
+    models["q_scratch"].visualize(X, y)
+
