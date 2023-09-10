@@ -82,7 +82,7 @@ class Visualizer:
             seed=seed,
             **kwargs
         )
-        need_transform = (not is_default) and (X.shape[-1] != 2)
+        need_transform = (not is_default) or (X.shape[-1] != 2)
 
         if kwargs.get("check_estimators", True):
             check_estimator(model)
