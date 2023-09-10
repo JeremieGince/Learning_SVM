@@ -20,7 +20,7 @@ using the sklearn library, from scratch and with a classical and quantum kernel.
 decision boundary of the SVMs.
 
 ## Requirements
-* Python 3.8
+* Python 3.8 or higher
 * Other requirements are in the [requirements.txt](requirements.txt) file. You can install them using the following 
 command:
 ```bash
