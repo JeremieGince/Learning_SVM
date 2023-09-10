@@ -3,6 +3,7 @@ from typing import Optional, Union, Callable
 
 import numpy as np
 from pennylane import AngleEmbedding
+from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
 from sklearn.utils.estimator_checks import check_estimator
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.multiclass import unique_labels
@@ -16,21 +17,20 @@ class SVMFromScratch(BaseEstimator):
     def __init__(
             self,
             kernel: Union[str, Callable] = "linear",
-            C: float = 1.0,
-            lmbda: float = 0.1,
+            lmbda: float = 1e-5,
             eta: float = 0.1,
             max_iter: int = 100,
-            
+            tol: float = 1e-3,
     ):
-        self._C = C
-        self._lmbda = lmbda
-        self._eta = eta
+        self.lmbda = lmbda
+        self.eta = eta
         self.max_iter = max_iter
-        self._kernel = kernel
+        self.tol = tol
+        self.kernel = kernel
         self.multipliers = None
         self.support_indexes = None
         self.bias = None
-        self._training_kernel = None
+        self.training_kernel = None
 
     @property
     def dual_coef_(self):
@@ -49,18 +49,18 @@ class SVMFromScratch(BaseEstimator):
         return self.X_[self.support_indexes]
     
     def apply_kernel(self, x0, x1):
-        if isinstance(self._kernel, str):
-            return pairwise_kernels(x0, x1, metric=self._kernel)
+        if isinstance(self.kernel, str):
+            return pairwise_kernels(x0, x1, metric=self.kernel)
         else:
-            return self._kernel(x0, x1)
+            return self.kernel(x0, x1)
         
     def _get_support_kernel(self, x):
         x = np.asarray(x)
         is_training_set = (self.X_.shape == x.shape) and np.allclose(self.X_, x)
         if is_training_set:
-            if self._training_kernel is None:
-                self._training_kernel = self.apply_kernel(self.X_, self.X_)
-            _support_kernel = self._training_kernel[self.support_indexes, :]
+            if self.training_kernel is None:
+                self.training_kernel = self.apply_kernel(self.X_, self.X_)
+            _support_kernel = self.training_kernel[self.support_indexes, :]
         else:
             _support_kernel = self.apply_kernel(self.support_vectors_, x)
         return _support_kernel  # (n_supports, n_samples)
@@ -76,7 +76,7 @@ class SVMFromScratch(BaseEstimator):
     
     def compute_hinge_loss(self, x):
         loss = np.sum(np.maximum(0, 1 - self.y_ * self.compute_h(x)))
-        reg = (self._lmbda / 2) * np.sum(self.multipliers[self.support_indexes]**2)
+        reg = (self.lmbda / 2) * np.sum(self.multipliers[self.support_indexes] ** 2)
         return loss + reg
     
     def compute_derivative_hinge_by_multipliers(self, x):
@@ -84,7 +84,7 @@ class SVMFromScratch(BaseEstimator):
         kernel = self._get_support_kernel(x)  # (n_supports, n_samples)
         ys = self.y_[self.support_indexes]
         d_loss = np.dot(-self.y_.reshape(1, -1), np.dot(ys, kernel)).reshape(-1)  # (n_samples, )
-        d_reg = self._lmbda * self.multipliers  # (n_samples, )
+        d_reg = self.lmbda * np.sum(np.abs(self.multipliers))  # (n_samples, )
         return d_loss * condition + d_reg
     
     def compute_derivative_hinge_by_bias(self, x):
@@ -111,7 +111,7 @@ class SVMFromScratch(BaseEstimator):
         self.support_indexes = np.arange(X.shape[0])
         self.bias = 0.0
         
-        self._training_kernel = self.apply_kernel(self.X_, self.X_)
+        self.training_kernel = self.apply_kernel(self.X_, self.X_)
 
         iteration = 0
         self.history = []
@@ -119,7 +119,7 @@ class SVMFromScratch(BaseEstimator):
             d_hl_d_m = self.compute_derivative_hinge_by_multipliers(self.X_)
             d_hl_d_b = self.compute_derivative_hinge_by_bias(self.X_)
 
-            self.multipliers -= self._eta * d_hl_d_m
+            self.multipliers -= self.eta * d_hl_d_m
             self.multipliers[self.multipliers < 0.0] = 0.0
             # self.multipliers[self.multipliers > self._C] = 0.0
             # n_supports = max(1, int(0.5 * self.multipliers.shape[0]))
@@ -127,11 +127,11 @@ class SVMFromScratch(BaseEstimator):
             # self.multipliers[np.argsort(self.multipliers)[:-n_supports]] = 0.0
 
             self.support_indexes = np.argwhere(self.multipliers > 0.0).reshape(-1)
-            self.bias -= self._eta * d_hl_d_b
+            self.bias -= self.eta * d_hl_d_b
 
             loss = self.compute_hinge_loss(self.X_)
             self.history.append(loss)
-            if np.isclose(loss, 0.0):
+            if loss <= self.tol:
                 break
             iteration += 1
         return self
@@ -216,4 +216,15 @@ class SVMFromScratch(BaseEstimator):
         ax.set_title("SVM from scratch")
         plt.show()
         return fig, ax
+
+
+class SVC:
+    def __new__(cls, *args, **kwargs):
+        decision_function_shape = kwargs.get("decision_function_shape", "ovr").lower()
+        if decision_function_shape == "ovr":
+            return OneVsRestClassifier(SVMFromScratch(*args, **kwargs))
+        elif decision_function_shape == "ovo":
+            return OneVsOneClassifier(SVMFromScratch(*args, **kwargs))
+        else:
+            raise ValueError(f"Unknown decision_function_shape: {decision_function_shape}")
 
