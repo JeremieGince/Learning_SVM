@@ -105,7 +105,10 @@ class Visualizer:
         if fig is None or ax is None:
             fig, ax = plt.subplots(1, 1, tight_layout=True, figsize=(14, 10))
 
-        n_labels = len(np.unique(y_pred))
+        if y is None:
+            n_labels = len(np.unique(y_pred))
+        else:
+            n_labels = len(np.unique(y))
         base_cmap = sns.color_palette(palette=None, n_colors=n_labels, as_cmap=False)
         cmap = ListedColormap([base_cmap[i] for i in range(n_labels)])
         ax.imshow(
