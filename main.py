@@ -5,26 +5,24 @@ import numpy as np
 import pandas as pd
 from sklearn import datasets
 from sklearn import svm
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from kernels import ClassicalKernel, QuantumKernel
-from scratch import SVMFromScratch, SVC
+from scratch import SVC
 from visualization import Visualizer
 
 if __name__ == '__main__':
-
     # dataset = datasets.load_breast_cancer(as_frame=True)
-    dataset = datasets.load_iris(as_frame=True)
-    # dataset = datasets.make_classification(
-    #     n_samples=100,
-    #     n_features=2,
-    #     n_classes=2,
-    #     n_clusters_per_class=1,
-    #     n_informative=2,
-    #     n_redundant=0,
-    #     random_state=0,
-    # )
+    # dataset = datasets.load_iris(as_frame=True)
+    dataset = datasets.make_classification(
+        n_samples=100,
+        n_features=2,
+        n_classes=2,
+        n_clusters_per_class=1,
+        n_informative=2,
+        n_redundant=0,
+        random_state=0,
+    )
     if isinstance(dataset, tuple):
         X, y = dataset
     elif isinstance(dataset, dict):
