@@ -5,25 +5,26 @@ import numpy as np
 import pandas as pd
 from sklearn import datasets
 from sklearn import svm
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from kernels import ClassicalKernel, QuantumKernel
-from scratch import SVMFromScratch
+from scratch import SVMFromScratch, SVC
 from visualization import Visualizer
 
 if __name__ == '__main__':
-    embedding_size = 2
+
     # dataset = datasets.load_breast_cancer(as_frame=True)
-    # dataset = datasets.load_iris(as_frame=True)
-    dataset = datasets.make_classification(
-        n_samples=100,
-        n_features=2,
-        n_classes=2,
-        n_clusters_per_class=1,
-        n_informative=2,
-        n_redundant=0,
-        random_state=0,
-    )
+    dataset = datasets.load_iris(as_frame=True)
+    # dataset = datasets.make_classification(
+    #     n_samples=100,
+    #     n_features=2,
+    #     n_classes=2,
+    #     n_clusters_per_class=1,
+    #     n_informative=2,
+    #     n_redundant=0,
+    #     random_state=0,
+    # )
     if isinstance(dataset, tuple):
         X, y = dataset
     elif isinstance(dataset, dict):
@@ -40,6 +41,8 @@ if __name__ == '__main__':
     # y = MinMaxScaler(feature_range=(-1, 1)).fit_transform(y.reshape(-1, 1)).reshape(-1).astype(int)
     print(f"{X.shape = }, {y.shape = }")
     print(f"{np.unique(y) = }")
+
+    embedding_size = X.shape[-1]
 
     rn_state = np.random.RandomState(seed=0)
     rn_embed_matrix = rn_state.randn(X.shape[-1], embedding_size)
@@ -59,12 +62,12 @@ if __name__ == '__main__':
 
     clas_model = svm.SVC(kernel=clas_kernel.kernel, random_state=0)
     qml_model = svm.SVC(kernel=q_kernel.kernel, random_state=0)
-    scratch_model = SVMFromScratch(kernel=clas_kernel.kernel, max_iter=1_000)
-    q_scratch_model = SVMFromScratch(kernel=q_kernel.kernel, max_iter=1_000)
+    scratch_model = SVC(kernel=clas_kernel.kernel, max_iter=1_000)
+    q_scratch_model = SVC(kernel=q_kernel.kernel, max_iter=1_000)
     
     models = {
         "classical": clas_model,
-        "scratch"  : scratch_model,
+        "scratch": scratch_model,
         "qml": qml_model,
         "q_scratch": q_scratch_model,
     }
@@ -87,16 +90,17 @@ if __name__ == '__main__':
             # reducer=decomposition.PCA(n_components=2, random_state=0),
             # reducer=umap.UMAP(n_components=2, transform_seed=0, n_jobs=max(0, psutil.cpu_count() - 2)),
             check_estimators=False,
-            n_pts=10_000,
+            n_pts=(100 if m_name.startswith('q') else 100_000),
             title=f"Decision boundaries in the reduced space.",
             legend_labels=getattr(dataset, "target_names", None),
             # axis_name="RN",
             fig=fig, ax=axes[i],
+            interpolation="nearest",
         )
         ax.set_title(f"{m_name} accuracy: {accuracy * 100:.2f}%")
 
     plt.show()
 
-    models["scratch"].visualize(X, y)
-    models["q_scratch"].visualize(X, y)
+    # models["scratch"].visualize(X, y)
+    # models["q_scratch"].visualize(X, y)
 
