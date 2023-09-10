@@ -159,7 +159,7 @@ class QuantumKernel(BaseEstimator):
                 for _ in range(len(x0) * len(x1))
             ],
             nb_workers=self._nb_workers,
-            verbose=True,
+            verbose=False,
         )
         _result = np.asarray(_list_results).reshape((len(x0), len(x1)))
         return _result
