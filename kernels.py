@@ -73,7 +73,7 @@ class QuantumKernel(BaseEstimator):
             embedding_dim: Optional[int] = None,
             seed: Optional[int] = 0,
             encoder_matrix: Optional[np.ndarray] = None,
-            interface: Optional[str] = "autograd",
+            interface: Optional[str] = "auto",
             device: Optional[str] = "lightning.qubit",
             shots: int = 128,
             nb_workers: int = 0,
