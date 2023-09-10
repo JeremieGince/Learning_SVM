@@ -7,6 +7,7 @@ This repository contains the implementation of SVM algorithm from scratch in pyt
 ## Table of contents
 * [Introduction](#introduction)
 * [Jupyter notebook](https://github.com/JeremieGince/Learning_SVM/blob/main/notebook.ipynb)
+* [Google Colab](https://colab.research.google.com/github/JeremieGince/Learning_SVM/blob/main/notebook.ipynb)
 * [Scripts](#Scripts)
 * [Requirements](#requirements)
 
