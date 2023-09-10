@@ -3,6 +3,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import psutil
 from sklearn import datasets
 from sklearn import svm
 from sklearn.model_selection import train_test_split
@@ -14,16 +15,16 @@ from visualization import Visualizer
 
 if __name__ == '__main__':
     # dataset = datasets.load_breast_cancer(as_frame=True)
-    dataset = datasets.load_iris(as_frame=True)
-    # dataset = datasets.make_classification(
-    #     n_samples=100,
-    #     n_features=2,
-    #     n_classes=2,
-    #     n_clusters_per_class=1,
-    #     n_informative=2,
-    #     n_redundant=0,
-    #     random_state=0,
-    # )
+    # dataset = datasets.load_iris(as_frame=True)
+    dataset = datasets.make_classification(
+        n_samples=100,
+        n_features=4,
+        n_classes=2,
+        n_clusters_per_class=1,
+        n_informative=2,
+        n_redundant=0,
+        random_state=0,
+    )
     if isinstance(dataset, tuple):
         X, y = dataset
     elif isinstance(dataset, dict):
@@ -57,7 +58,9 @@ if __name__ == '__main__':
         embedding_dim=embedding_size,
         seed=0,
         # encoder_matrix=rn_embed_matrix,
-        shots=32,
+        shots=128,
+        nb_workers=max(0, psutil.cpu_count(logical=False) - 2),
+        interface="auto",
     ).fit(X, y)
 
     clas_model = svm.SVC(kernel=clas_kernel.kernel, random_state=0)
