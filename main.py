@@ -93,7 +93,7 @@ if __name__ == '__main__':
             # reducer=decomposition.PCA(n_components=2, random_state=0),
             # reducer=umap.UMAP(n_components=2, transform_seed=0, n_jobs=max(0, psutil.cpu_count() - 2)),
             check_estimators=False,
-            n_pts=(100 if m_name.startswith('q') else 100_000),
+            n_pts=(1_000 if m_name.startswith('q') else 100_000),
             title=f"Decision boundaries in the reduced space.",
             legend_labels=getattr(dataset, "target_names", None),
             # axis_name="RN",
