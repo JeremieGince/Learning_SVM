@@ -23,6 +23,7 @@ class Visualizer:
             reducer: Optional[Any] = None,
             transform: Optional[Callable] = None,
             inverse_transform: Optional[Callable] = None,
+            seed: Optional[int] = 0,
             **kwargs
     ):
         """
@@ -40,10 +41,10 @@ class Visualizer:
                 reducer = "pca"
             if isinstance(reducer, str):
                 if reducer.lower() == "pca":
-                    reducer = decomposition.PCA(n_components=2)
+                    reducer = decomposition.PCA(n_components=2, random_state=seed)
                 elif reducer.lower() == "umap":
                     import umap
-                    reducer = umap.UMAP(n_components=2)
+                    reducer = umap.UMAP(n_components=2, transform_seed=seed)
                 else:
                     raise ValueError(f"Unknown reducer: {reducer}")
             if kwargs.get("check_estimators", True):
@@ -51,7 +52,7 @@ class Visualizer:
             reducer.fit(X)
             transform = reducer.transform
             inverse_transform = reducer.inverse_transform
-        return transform, inverse_transform
+        return transform, inverse_transform, need_reducer
 
 
     @staticmethod
@@ -73,18 +74,23 @@ class Visualizer:
         if isinstance(reducer, str):
             axis_label_cue = reducer.upper()
 
-        transform, inverse_transform = Visualizer.gather_transforms(
+        transform, inverse_transform, is_default = Visualizer.gather_transforms(
             X=X,
             reducer=reducer,
             transform=transform,
             inverse_transform=inverse_transform,
+            seed=seed,
             **kwargs
         )
+        need_transform = (not is_default) and (X.shape[-1] != 2)
 
         if kwargs.get("check_estimators", True):
             check_estimator(model)
-
-        x_reduced = transform(X)
+        
+        if need_transform:
+            x_reduced = transform(X)
+        else:
+            x_reduced = X
 
         if x_reduced.ndim != 2:
             raise ValueError(f"x_reduced.ndim = {x_reduced.ndim} != 2. The given reducer does not reduce to 2D.")
@@ -97,7 +103,10 @@ class Visualizer:
         )
 
         x_reduced_mesh = np.c_[xx.ravel(), yy.ravel()]
-        x_mesh = inverse_transform(x_reduced_mesh)
+        if need_transform:
+            x_mesh = inverse_transform(x_reduced_mesh)
+        else:
+            x_mesh = x_reduced_mesh
         y_pred = model.predict(x_mesh)
         y_mesh = y_pred.reshape(xx.shape)
 
