@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn import datasets
 from sklearn import svm
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from kernels import ClassicalKernel, QuantumKernel
@@ -39,6 +40,7 @@ if __name__ == '__main__':
     # y = MinMaxScaler(feature_range=(-1, 1)).fit_transform(y.reshape(-1, 1)).reshape(-1).astype(int)
     print(f"{X.shape = }, {y.shape = }")
     print(f"{np.unique(y) = }")
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=0)
 
     embedding_size = X.shape[-1]
 
@@ -76,11 +78,11 @@ if __name__ == '__main__':
     axes = np.ravel(np.asarray([axes]))
     for i, (m_name, model) in enumerate(models.items()):
         fit_start_time = time.time()
-        model.fit(X, y)
+        model.fit(x_train, y_train)
         fit_end_time = time.time()
         fit_time = fit_end_time - fit_start_time
-        accuracy = model.score(X, y)
-        print(f"{m_name} accuracy: {accuracy * 100 :.4f}%, {fit_time = }[s]")
+        accuracy = model.score(x_test, y_test)
+        print(f"{m_name} test accuracy: {accuracy * 100 :.4f}%, {fit_time = :.5f} [s]")
 
         fig, ax = Visualizer.plot_2d_decision_boundaries(
             model=model,
