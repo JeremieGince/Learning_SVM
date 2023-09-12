@@ -15,16 +15,16 @@ from visualization import Visualizer
 
 if __name__ == '__main__':
     # dataset = datasets.load_breast_cancer(as_frame=True)
-    # dataset = datasets.load_iris(as_frame=True)
-    dataset = datasets.make_classification(
-        n_samples=100,
-        n_features=4,
-        n_classes=2,
-        n_clusters_per_class=1,
-        n_informative=2,
-        n_redundant=0,
-        random_state=0,
-    )
+    dataset = datasets.load_iris(as_frame=True)
+    # dataset = datasets.make_classification(
+    #     n_samples=100,
+    #     n_features=4,
+    #     n_classes=2,
+    #     n_clusters_per_class=1,
+    #     n_informative=2,
+    #     n_redundant=0,
+    #     random_state=0,
+    # )
     if isinstance(dataset, tuple):
         X, y = dataset
     elif isinstance(dataset, dict):
@@ -39,11 +39,13 @@ if __name__ == '__main__':
     # X = StandardScaler().fit_transform(X)
     X = MinMaxScaler(feature_range=(0, 1)).fit_transform(X)
     # y = MinMaxScaler(feature_range=(-1, 1)).fit_transform(y.reshape(-1, 1)).reshape(-1).astype(int)
-    print(f"{X.shape = }, {y.shape = }")
-    print(f"{np.unique(y) = }")
+    print(f"(N Samples, N features): {X.shape}")
+    print(f"Classes: {set(np.unique(y))}, labels: {getattr(dataset, 'target_names', set(np.unique(y)))}")
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=0)
+    print(f"N train samples: {x_train.shape[0]}, N test samples: {x_test.shape[0]}")
 
     embedding_size = X.shape[-1]
+    print(f"Embedding size: {embedding_size}")
 
     rn_state = np.random.RandomState(seed=0)
     rn_embed_matrix = rn_state.randn(X.shape[-1], embedding_size)
@@ -58,7 +60,7 @@ if __name__ == '__main__':
         embedding_dim=embedding_size,
         seed=0,
         # encoder_matrix=rn_embed_matrix,
-        shots=128,
+        shots=32,
         nb_workers=max(0, psutil.cpu_count(logical=False) - 2),
         interface="auto",
     ).fit(X, y)
@@ -85,8 +87,7 @@ if __name__ == '__main__':
         fit_end_time = time.time()
         fit_time = fit_end_time - fit_start_time
         accuracy = model.score(x_test, y_test)
-        print(f"{m_name} test accuracy: {accuracy * 100 :.4f}%, {fit_time = :.5f} [s]")
-
+        plot_start_time = time.time()
         fig, ax = Visualizer.plot_2d_decision_boundaries(
             model=model,
             X=X, y=y,
@@ -101,9 +102,10 @@ if __name__ == '__main__':
             interpolation="nearest",
         )
         ax.set_title(f"{m_name} accuracy: {accuracy * 100:.2f}%")
+        plot_end_time = time.time()
+        plot_time = plot_end_time - plot_start_time
+        print(f"{m_name} test accuracy: {accuracy * 100 :.4f}%, {fit_time = :.5f} [s], {plot_time = :.5f} [s]")
 
     plt.show()
 
-    # models["scratch"].visualize(X, y)
-    # models["q_scratch"].visualize(X, y)
 
